@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Курсовая</title>
+  <link href="{{url_for('static', filename = 'style.css')}}" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+	<div class = "grid">
+	<div id = "form">
+	<form action = "/file" method = "post" enctype="multipart/form-data">
+	<label for="upload-photo"><img src="https://cdn-icons-png.flaticon.com/512/60/60492.png" height = "64" width = "64"/></label>
+    <input id = "upload-photo" type="file" name="photo" onchange="this.form.submit()" accept = "image/jpg, image/png, image/jpeg"/>
+	</form>
+	</div>
+	<textarea id = "text" >{{contest}}</textarea>
+	</div>
+	<script src="{{url_for('static', filename = 'script.js')}}"></script>
+</body>
+
+</html>

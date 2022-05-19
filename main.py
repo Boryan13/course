@@ -1,87 +1,43 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.action_chains import ActionChains
+from flask import Flask, render_template, request
+import base64, json, requests, os
 
-from flask import Flask, request, render_template
+def encode_file(file):
+  file_content = file.read()
+  return base64.b64encode(file_content)
 
-import os, time
+def get_text_to_img(path):
+    contest = ""
+    with open(path, "rb") as image_file:
+        text = str(encode_file(image_file))[2:][:-1]
+        res = {"folderId": os.environ["folder_id"], "analyze_specs": [{"content": text, "features": [{"type": "TEXT_DETECTION", "text_detection_config": {"language_codes": ["*"]}}]}]}
+        iam = requests.post("https://iam.api.cloud.yandex.net/iam/v1/tokens", json.dumps({"yandexPassportOauthToken": os.environ["OAuth"]})).json()["iamToken"]
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {iam}"}
+        result = requests.post("https://vision.api.cloud.yandex.net/vision/v1/batchAnalyze", data = json.dumps(res), headers = headers).json()
+        result = result['results'][0]['results'][0]['textDetection']['pages'][0]['blocks']
+        for i in range(len(result)):
+            res = result[i]['lines']
+            for j in range(len(res)):
+                r = res[j]["words"] 
+                for k in range(len(r)):
+                    #coordinate = r[k]['boundingBox']['vertices']
+                    text = r[k]["text"]
+                    contest += text + " "
+    os.remove(path)
+    return contest	
 
-chrome_options = Options()
-chrome_options.add_argument('--no-sandbox')
-chrome_options.add_argument("window-size=1000,600")
-chrome_options.add_argument('--disable-dev-shm-usage')
-
-driver = webdriver.Chrome(options=chrome_options)
-
-def open_mathpix():
-    try:
-        driver.get("https://snip.mathpix.com/")
-        inp = driver.find_elements(By.TAG_NAME, "input")
-        inp[0].send_keys(os.environ["login"])
-        inp[1].send_keys(os.environ["password"])
-        driver.find_element(By.TAG_NAME, "button").click()
-    except:
-        open_mathpix()
-
-def delete_note():
-	driver.find_elements(By.TAG_NAME, "svg")[9].click()
-	[i for i in driver.find_elements(By.TAG_NAME, "li") if i.text == "Delete Note"][0].click()
-	time.sleep(1)
-	driver.find_element(By.CLASS_NAME, "button-container").find_elements(By.TAG_NAME, "button")[0].click()
-
-def create_note(flag):
-    time.sleep(2)
-    driver.find_elements(By.TAG_NAME, "svg")[9].click()
-    driver.find_element(By.XPATH, "//input[@id = 'note-name']").send_keys(Keys.ENTER)
-    time.sleep(3)
-    if flag:
-        driver.find_element(By.XPATH, "//input[@name = 'image']").send_keys(os.getcwd() + "/test.png")
-        time.sleep(3)
-        driver.find_element(By.CLASS_NAME, "CodeMirror-code").click()
-        base = driver.find_element(By.CLASS_NAME, "CodeMirror-code")
-        base.click()
-        driver.get(base.text.split("(")[1][:-1])
-        time.sleep(2)
-        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.CONTROL, "C")
-        driver.get("https://snip.mathpix.com/")
-    else:
-        elem = driver.find_element(By.CLASS_NAME, "CodeMirror-code")
-        actions = ActionChains(driver)
-        actions.move_to_element(elem)
-        actions.click(elem) 
-        actions.key_down(Keys.CONTROL)
-        actions.send_keys('v')
-        actions.key_up(Keys.CONTROL)
-        actions.perform() 
-        time.sleep(5)
-        return elem.text
-
-def get_text():
-    time.sleep(3)
-    delete_note()
-    return create_note(False)
-	
 app = Flask(__name__)
 @app.route("/")
 def index():
-	return render_template("upload.html")
+	return render_template("index.html")
 
-@app.route("/upload", methods = ["POST"])
-def upload():
-    for file in request.files["file"]:
-        with open("test.png", "ab") as photo:
-            photo.write(file)
-    delete_note()
-    create_note(True)	
-    os.remove("test.png")
-    return render_template("result.html", url_for = get_text())
+@app.route("/file", methods = ["post"])
+def file():
+    if request.method == 'POST':
+        file1 = request.files['photo']
+        path = os.path.join('uploads', file1.filename)
+        file1.save(path)
+    return render_template("index.html", contest = get_text_to_img(path))
 
-
-def main():
-	open_mathpix()
-	app.run(host = "0.0.0.0", port = 5000)
 
 if __name__ == "__main__":
-	main()
+	app.run(host = "0.0.0.0", port = 5000)

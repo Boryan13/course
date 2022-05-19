@@ -1,0 +1,32 @@
+*{
+	font-family: "Gill Sans", sans-serif;
+}
+
+label {
+   cursor: pointer;
+}
+
+#upload-photo {
+   opacity: 0;
+   position: absolute;
+   z-index: -1;
+}
+
+#form{
+	border: 1px solid black;
+}
+
+form{
+	margin-top: 48%;
+	margin-left: 48%;
+}
+
+textarea{
+	resize: none;
+	font-size: 1.6em;
+}
+
+.grid{
+	display: grid;
+	grid-template-columns: 50% 50%;
+}
